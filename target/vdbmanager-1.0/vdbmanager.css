@@ -1,0 +1,181 @@
+/** Add css rules here for your application. */
+
+
+/** Example rules used by the template application (remove for your app) */
+h1 {
+  font-size: 2.5em;
+  font-weight: bold;
+  color: #777777;
+  text-align: left;
+}
+
+.gwt-FlexTable {
+	font-size: 1.5em;
+}
+
+.applicationTitle {
+  font-size: 2.5em;
+  font-weight: bold;
+  color: #777777;
+  text-align: left;
+}
+
+.vdbSelectionLabel {
+  font-size: 1.45em;
+  font-weight: bold;
+  color: #777777;
+  text-align: left;
+}
+
+.vdbSourceTableTitle {
+  font-size: 1.75em;
+  font-weight: bold;
+  color: #777777;
+  text-align: left;
+}
+
+.labelText {
+  font-size: 1.25em;
+}
+
+.labelTextItalics {
+  font-size: 1.25em;
+  font-style:italic;
+}
+
+.labelTextBold {
+  font-size: 1.25em;
+  font-weight: bold;
+}
+
+.bottomPadding10 {
+  padding: 0px 0px 10px 0px
+}
+
+.rightPadding5 {
+  padding: 0px 5px 0px 0px
+}
+
+.paddingBottom10Left20 {
+  padding: 0px 0px 10px 20px
+}
+
+.errorDialogPanel {
+  width: 200x;
+  height: 200x;
+  margin: 5px;
+}
+
+.addSourceDialogPanel {
+  width: 450x;
+  height: 200x;
+  margin: 5px;
+}
+
+.newVDBDialogPanel {
+  width: 300x;
+  height: 200x;
+  margin: 5px;
+}
+
+.deleteVDBDialogPanel {
+  width: 200x;
+  height: 200x;
+  margin: 5px;
+}
+
+.deleteSourceDialogPanel {
+  width: 200x;
+  height: 200x;
+  margin: 5px;
+}
+
+
+.serverResponseLabelError {
+  color: red;
+}
+
+.vdbStatusActive {
+  background-color: green;
+  color: white;
+}
+
+.vdbStatusInactive {
+  background-color: red;
+  color: white;
+}
+
+/* VDB Sources Table */
+.vdbSourcesTable {
+  border: 1px solid silver;
+  padding: 2px;
+  margin-bottom:6px;
+}
+
+.vdbSourcesTableCell {
+  font-size: 1.25em;
+}
+
+/* VDB Sources Table - Header row */
+.vdbSourcesTableHeader {
+  background-color: #666666;
+  font-weight: bold;
+  color: white;
+}
+
+/* VDB Sources Table - Even rows */
+.vdbSourcesTableEvenRow {
+  background-color: #CCCCCC;
+  color: black;
+}
+
+/* VDB Sources Table - Odd rows */
+.vdbSourcesTableOddRow {
+  background-color: #FFFFFF;
+  color: black;
+}
+
+
+/* VDB Source Properties Table */
+.sourcePropertiesTable {
+  border: 1px solid silver;
+  padding: 2px 2px 10px 2px;
+  margin-bottom:6px;
+}
+
+.sourcePropertiesTableCell {
+  font-size: 1.25em;
+  color: black;
+}
+
+.sourcePropertiesTableCellItalics {
+  font-size: 1.25em;
+  color: black;
+  font-style:italic;
+}
+
+.sourcePropertiesTableCellUnmodifiable {
+  background-color: #CCCCCC;
+  color: black;
+}
+
+/* VDB Source Properties Table - Header row */
+.sourcePropertiesTableHeader {
+  background-color: #666666;
+  font-weight: bold;
+  color: white;
+}
+
+/* VDB Source Properties Table - Even rows */
+.sourcePropertiesTableEvenRow {
+  background-color: #CCCCCC;
+  font-weight: bold;
+  color: black;
+}
+
+/* VDB Source Properties Table - Odd rows */
+.sourcePropertiesTableOddRow {
+  background-color: #FFFFFF;
+  font-weight: bold;
+  color: black;
+}
