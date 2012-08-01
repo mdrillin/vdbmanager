@@ -1,2 +1,0 @@
-serviceClass: org.teiid.tools.vdbmanager.client.TeiidMgrService
-path: D58CBB3122991EDE9B50602A751E0FFC.gwt.rpc
