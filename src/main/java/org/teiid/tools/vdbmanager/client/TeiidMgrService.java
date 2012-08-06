@@ -3,8 +3,6 @@ package org.teiid.tools.vdbmanager.client;
 import java.util.List;
 import java.util.Map;
 
-import org.teiid.adminapi.PropertyDefinition;
-
 import com.google.gwt.user.client.rpc.RemoteService;
 import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
 
@@ -21,6 +19,8 @@ public interface TeiidMgrService extends RemoteService {
 	  List<String> getDynamicVDBNames() throws Exception;
 
 	  List<String> getDataSourceTemplates() throws Exception;
+		
+	  Map<String,List<PropertyObj>> getDSPropertyObjMap() throws Exception;
 
 	  List<String> getPropertyNames(String templateName) throws Exception;
 	  

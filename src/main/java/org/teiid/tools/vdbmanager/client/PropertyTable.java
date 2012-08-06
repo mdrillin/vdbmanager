@@ -7,8 +7,6 @@ import org.teiid.tools.vdbmanager.client.events.PropertyChangedEvent;
 
 import com.google.gwt.core.client.Scheduler;
 import com.google.gwt.core.client.Scheduler.ScheduledCommand;
-import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
@@ -16,16 +14,12 @@ import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.event.shared.SimpleEventBus;
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Event;
-import com.google.gwt.user.client.ui.Button;
-import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.FlexTable;
-import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.PasswordTextBox;
 import com.google.gwt.user.client.ui.TextArea;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.TextBoxBase;
-import com.google.gwt.user.client.ui.VerticalPanel;
 
 /*
  * Property Table - extends FlexTable.  Handles Display of PropertyObj, showing DisplayName and value.
@@ -51,11 +45,6 @@ public class PropertyTable extends FlexTable {
 	private SimpleEventBus eventBus;
 	private List<PropertyObj> properties = new ArrayList<PropertyObj>();
 	private String status = "OK";
-
-	// Error Dialog Controls
-	private DialogBox errorDialogBox = new DialogBox();
-	private Button errorDialogCloseButton = new Button("Cancel");
-	private HTML serverResponseLabel = new HTML();
 
 	PropertyTable(SimpleEventBus eventBus) {
 		// Adding EventBus allows us to fire events out to other components.
@@ -184,7 +173,6 @@ public class PropertyTable extends FlexTable {
 		if(isModifiable) {
 			tBox.addValueChangeHandler(new ValueChangeHandler<String>() {
 
-		        @Override
 		        public void onValueChange(ValueChangeEvent<String> event) {
 					propObj.setValue(event.getValue());
 					updateStatus();
@@ -193,7 +181,6 @@ public class PropertyTable extends FlexTable {
 
 		    });
 			tBox.addKeyUpHandler(new KeyUpHandler() {
-				@Override
 				public void onKeyUp(KeyUpEvent event) {
 					propObj.setValue(tBox.getText());
 					updateStatus();
@@ -259,7 +246,6 @@ public class PropertyTable extends FlexTable {
 	            case Event.ONPASTE:
 	                Scheduler.get().scheduleDeferred(new ScheduledCommand() {
 
-	                    @Override
 	                    public void execute() {
 	                        ValueChangeEvent.fire(PropertyValueTextBox.this, getText());
 	                    }

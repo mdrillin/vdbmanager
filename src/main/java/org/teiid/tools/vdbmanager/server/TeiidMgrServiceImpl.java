@@ -101,11 +101,8 @@ TeiidMgrService {
 		List<String> vdbNames = new ArrayList<String>();
 		if(this.admin==null) return vdbNames;
 		
-		Translator trans = admin.getTranslator("mysql");
-		Collection<PropertyDefinition> pDefns = (Collection<PropertyDefinition>)admin.getTemplatePropertyDefinitions("mysql");
-		
 		// Get list of VDBS - get vdbName VDB (if already deployed)
-		Collection<VDB> vdbs = (Collection<VDB>) this.admin.getVDBs();
+		Collection<? extends VDB> vdbs = this.admin.getVDBs();
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
 			if(vdbMeta.isDynamic()) {
@@ -143,6 +140,27 @@ TeiidMgrService {
 	}
 	
 	/*
+	 * Get a Map of the current Templates to their PropertyObjects
+	 * @return the Map of dsTemplate to List of PropertyObjects
+	 */
+	public Map<String,List<PropertyObj>> getDSPropertyObjMap() throws Exception {
+		// Define Map to hold the results
+		Map<String,List<PropertyObj>> resultMap = new HashMap<String,List<PropertyObj>>();
+		
+		// Get all DataSource Template names
+		List<String> templateNames = getDataSourceTemplates();
+		
+		// For each DataSource, get the properties then populate the resultMap. 
+		for(String template: templateNames) {
+			List<PropertyObj> propDefns = getPropertyDefns(template);
+			resultMap.put(template, propDefns);
+		}
+		
+		return resultMap;
+	}
+	
+	
+	/*
 	 * Get the current list of Translator names
 	 * @return the list of Translator names
 	 */
@@ -151,7 +169,7 @@ TeiidMgrService {
 		if(this.admin==null) return transNames;
 		
 		// Get list of DataSource Template Names
-		Collection<Translator> translators = (Collection<Translator>) this.admin.getTranslators();
+		Collection<? extends Translator> translators = this.admin.getTranslators();
 		
 		// Filter out un-wanted names
 		for(Translator translator : translators) {
@@ -177,7 +195,7 @@ TeiidMgrService {
  		if(this.admin==null) return vdbNames;
  		
 		// Get list of VDBS - get vdbName VDB (if already deployed)
-		Collection<VDB> vdbs = (Collection<VDB>) this.admin.getVDBs();
+		Collection<? extends VDB> vdbs = this.admin.getVDBs();
 		
 		VDBMetaData workVDBMetaData = null;
 		for(VDB vdb : vdbs) {
@@ -207,12 +225,12 @@ TeiidMgrService {
 		return getDynamicVDBNames();
 	}
 	
-	private VDBMetaData createNewVDB(String vdbName, int vdbVersion) {
-		VDBMetaData vdbMetaData = new VDBMetaData();
-		vdbMetaData.setName(vdbName);
-		vdbMetaData.setVersion(vdbVersion);
-		return vdbMetaData;
-	}
+//	private VDBMetaData createNewVDB(String vdbName, int vdbVersion) {
+//		VDBMetaData vdbMetaData = new VDBMetaData();
+//		vdbMetaData.setName(vdbName);
+//		vdbMetaData.setVersion(vdbVersion);
+//		return vdbMetaData;
+//	}
 
 	/*
 	 * Delete the Dynamic VDB - undeploy it, then delete the source
@@ -309,7 +327,7 @@ TeiidMgrService {
 		List<List<DataItem>> rowList = new ArrayList<List<DataItem>>();
 		
 		// Get list of VDBS - get the named VDB
-		Collection<VDB> vdbs = (Collection<VDB>) admin.getVDBs();
+		Collection<? extends VDB> vdbs = admin.getVDBs();
 		VDBMetaData workVDBMetaData = null;
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
@@ -429,7 +447,7 @@ TeiidMgrService {
 	 */
 	public List<List<DataItem>> removeModels(String vdbName, List<String> removeModelNameList) throws Exception {		
 		// Get list of VDBS - get the named VDB
-		Collection<VDB> vdbs = (Collection<VDB>) admin.getVDBs();
+		Collection<? extends VDB> vdbs = admin.getVDBs();
 		VDBMetaData workVDBMetaData = null;
 		for(VDB vdb : vdbs) {
 			if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {
@@ -519,7 +537,7 @@ TeiidMgrService {
 	public List<String> getPropertyNames(String templateName) throws Exception {
 		List<String> propNames = new ArrayList<String>();
 		if(this.admin!=null && templateName!=null && !templateName.trim().isEmpty()) {
-			List<PropertyDefinition> propDefnList = (List<PropertyDefinition>)this.admin.getTemplatePropertyDefinitions(templateName);
+			Collection<? extends PropertyDefinition> propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
 			for(PropertyDefinition propDefn: propDefnList) {
 				if(propDefn.isRequired()) {
 					String name = propDefn.getName();
@@ -533,7 +551,7 @@ TeiidMgrService {
 	public List<PropertyObj> getPropertyDefns(String templateName) throws Exception {
 		List<PropertyObj> propDefns = new ArrayList<PropertyObj>();
 		if(this.admin!=null && templateName!=null && !templateName.trim().isEmpty()) {
-			List<PropertyDefinition> propDefnList = (List<PropertyDefinition>)this.admin.getTemplatePropertyDefinitions(templateName);
+			Collection<? extends PropertyDefinition> propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
 			for(PropertyDefinition propDefn: propDefnList) {
 				PropertyObj pDefn = new PropertyObj();
                 // ------------------------
@@ -646,7 +664,7 @@ TeiidMgrService {
 	private void addSourceModelToVDB(String vdbName, String sourceName, String translatorName) throws Exception {
 		if(admin!=null) {
 			// Get the VDB
-			Collection<VDB> vdbs = (Collection<VDB>) admin.getVDBs();
+			Collection<? extends VDB> vdbs = admin.getVDBs();
 			VDBMetaData workVDBMetaData = null;
 			for(VDB vdb : vdbs) {
 				if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {
@@ -657,9 +675,6 @@ TeiidMgrService {
 
 			// Add a model to the vdb, then re-deploy it.
 			if(workVDBMetaData!=null) {
-				
-				List<Model> models = workVDBMetaData.getModels();
-				
 				ModelMetaData modelMetaData = new ModelMetaData();
 				modelMetaData.addSourceMapping(sourceName, translatorName, "java:/"+sourceName);
 				modelMetaData.setName(sourceName+"Model");
@@ -682,7 +697,7 @@ TeiidMgrService {
 	private void addViewModelToVDB(String vdbName, String viewModelName, String ddlString) throws Exception {
 		if(admin!=null) {
 			// Get the VDB
-			Collection<VDB> vdbs = (Collection<VDB>) admin.getVDBs();
+			Collection<? extends VDB> vdbs = admin.getVDBs();
 			VDBMetaData workVDBMetaData = null;
 			for(VDB vdb : vdbs) {
 				if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {

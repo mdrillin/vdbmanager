@@ -1,6 +1,8 @@
 package org.teiid.tools.vdbmanager.client;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /*
@@ -61,7 +63,7 @@ public class DataSourceHelper {
 	 * @param dataSourceTypes the full list of DataSource Types
 	 * @return the filtered list of DataSource Types
 	 */
-	public static List<String> filterAllowedTypes(List<String> dataSourceTypes, boolean runningOnOpenShift) {
+	public static List<String> filterAllowedTypes(Collection<String> dataSourceTypes, boolean runningOnOpenShift) {
 		List<String> filteredTypes = new ArrayList<String>();
 		for(String sourceType: dataSourceTypes) {
 			if(runningOnOpenShift && ALLOWED_SOURCETYPES.contains(sourceType.toUpperCase())) {
@@ -70,6 +72,10 @@ public class DataSourceHelper {
 				filteredTypes.add(sourceType);
 			}
  		}
+		
+		// Sort the typeNames before returning
+		Collections.sort(filteredTypes);
+		
 		return filteredTypes;
 	}
 

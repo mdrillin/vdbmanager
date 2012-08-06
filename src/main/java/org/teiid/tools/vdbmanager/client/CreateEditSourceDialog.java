@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.teiid.tools.vdbmanager.client.events.PropertyChangedEvent;
 import org.teiid.tools.vdbmanager.client.events.PropertyChangedEventHandler;
 import org.teiid.tools.vdbmanager.client.events.SourcesChangedEvent;
 import org.teiid.tools.vdbmanager.client.events.VDBRedeployEvent;
 
+import com.google.gwt.core.client.GWT;
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
@@ -37,31 +39,20 @@ import com.google.gwt.user.client.ui.Widget;
  */
 public class CreateEditSourceDialog {
 
-	private static final String REMOVE_MODEL_ERROR = "An error occurred while "
-		+ "attempting to remove model(s). ";
-	private static final String ADD_MODEL_ERROR = "An error occurred while "
-		+ "attempting to add model(s). ";
-	private static final String INIT_DSNAMES_ERROR = "An error occurred while "
-		+ "attempting to init the datasource names. ";
-	private static final String INIT_TRANSLATOR_NAMES_ERROR = "An error occurred while "
-		+ "attempting to init the translator names. ";
-	private static final String INIT_DEFAULT_PROPS_ERROR = "An error occurred while "
-		+ "attempting to get template properties. ";
+	private final Messages messages = GWT.create(Messages.class);
 	
 	private static final String VIEW_MODEL = "ViewModel"; //$NON-NLS-1$
-	private static final String DDL_NAME = "Views-DDL";
-	private static final String DDL_DISPLAY_NAME = "View DDL";
 
 	// Source Type and Name Controls
-	private Label sourceNameLabel = new Label("Name: ");
+	private Label sourceNameLabel = new Label(messages.nameLabel());
 	private TextBox sourceNameTextBox = new TextBox();
 
-	private Label sourceTypeLabel = new Label("Source: ");
+	private Label sourceTypeLabel = new Label(messages.sourceLabel());
 	private ListBox sourceTypeListBox = new ListBox();
 	private Label sourceTypeEditLabel = new Label();
 
 	// Translator controls
-	private Label translatorLabel = new Label("Translator: ");
+	private Label translatorLabel = new Label(messages.translatorLabel());
 	private TextBox translatorTextBox = new TextBox();
 
 	private Label sourceNameRedeployLabel = new Label();
@@ -69,12 +60,12 @@ public class CreateEditSourceDialog {
 
 	// Dialog Controls
 	private DialogBox addSourceDialogBox = new DialogBox();
-	private Button addSourceDialogOKButton = new Button("OK");
-	private Button addSourceDialogCloseButton = new Button("Cancel");
+	private Button addSourceDialogOKButton = new Button(messages.okButton());
+	private Button addSourceDialogCloseButton = new Button(messages.cancelButton());
 
 	// Error Dialog Controls
 	private DialogBox errorDialogBox = new DialogBox();
-	private Button errorDialogCloseButton = new Button("Cancel");
+	private Button errorDialogCloseButton = new Button(messages.cancelButton());
 	private HTML serverResponseLabel = new HTML();
 
 	// Source Properties Table
@@ -98,6 +89,12 @@ public class CreateEditSourceDialog {
 	// Flag allows different handling when running on OpenShift
 	private boolean isRunningOnOpenShift = false;
 
+	// Map of type and default Properies, from last server refresh
+	private Map<String,List<PropertyObj>> dsPropertyObjMap = new HashMap<String,List<PropertyObj>>();
+	
+	/*
+	 * Constructor for the Dialog
+	 */
 	public CreateEditSourceDialog(SimpleEventBus eventBus, 
 			                      Map<String,Map<String,String>> savedNamePropertyMap,
 			                      Map<String,String> savedNameTranslatorMap,
@@ -133,6 +130,7 @@ public class CreateEditSourceDialog {
 
 		// Show the Dialog
 		addSourceDialogBox.showRelativeTo(relativeToWidget);
+		sourceNameTextBox.setFocus(true);
 	}
 	
 	public void showDialogForEdit(String vdbName, String editSourceName, String editSourceType, Widget relativeToWidget) {
@@ -144,17 +142,19 @@ public class CreateEditSourceDialog {
 		// Creates the components / panel / handlers
 		init(vdbName,editSourceName,editSourceType);
 		
-		populateUsingSaved(editSourceName,editSourceType);
+		// Populate properties using saved values
+		populatePropsUsingSaved(editSourceName,editSourceType);
 		
 		// Show the Dialog
 		addSourceDialogBox.showRelativeTo(relativeToWidget);
+		translatorTextBox.setFocus(true);
 	}
 	
 	private void init(final String vdbName, String editSourceName, String editSourceType) {
 		// Title selection is based on new / redeploy flag
-		String dialogTitle = "Re-Deploy an Existing DataSource";
+		String dialogTitle = messages.redeploySourceDialogTitle();
 		if(addingSource) {
-			dialogTitle = "Add a New DataSource";
+			dialogTitle = messages.addSourceDialogTitle();
 		}
 		// Create the popup AddSource DialogBox
 		addSourceDialogBox.setText(dialogTitle);
@@ -170,7 +170,7 @@ public class CreateEditSourceDialog {
 		// ------------------------
 		// Title Label
 		// ------------------------
-		Label titleLabel = new Label("Enter properties for the source: ");
+		Label titleLabel = new Label(messages.enterPropertiesMsg());
 		titleLabel.addStyleName("labelTextBold");
 		titleLabel.addStyleName("bottomPadding10");
 		vPanel.add(titleLabel);
@@ -245,7 +245,7 @@ public class CreateEditSourceDialog {
 		// Required Property Note Panel
 		// ------------------------------
 		HorizontalPanel propertyNotePanel = new HorizontalPanel();
-		Label propertyNoteLabel = new Label("* - denotes required property");
+		Label propertyNoteLabel = new Label(messages.requiredPropertyMsg());
 		propertyNoteLabel.addStyleName("labelTextItalics");
 		propertyNoteLabel.addStyleName("rightPadding5");
 		propertyNotePanel.add(propertyNoteLabel);
@@ -302,7 +302,6 @@ public class CreateEditSourceDialog {
 		
 		// Change Listener for Source Name TextBox - does property validation
 		sourceNameTextBox.addKeyUpHandler(new KeyUpHandler() {
-	        @Override
 	        public void onKeyUp(KeyUpEvent event) {
 	        	setAddSourceDialogOKButtonEnablement();
 	        }
@@ -366,82 +365,75 @@ public class CreateEditSourceDialog {
 	}
 	
 	/*
-	 * Populate the Properties table with defaults for the supplied dataSourceType
+	 * Populate the Properties table with defaults for the supplied dataSourceType.  The Property Definitions were
+	 * retrieved previously, and saved in the dsName - PropertyObj Map.  This eliminates the need for another server call.
 	 * @param dataSourceType the DataSource Type
 	 */
 	private void setSourcePropertiesTableWithDefaults(final String dataSourceType) {
-		// Set up the callback object.
-		AsyncCallback<List<PropertyObj>> callback = new AsyncCallback<List<PropertyObj>>() {
-			// On Failure - show Error Dialog
-			public void onFailure(Throwable caught) {
-				showErrorDialog("Init Default Properties Table Error", INIT_DEFAULT_PROPS_ERROR+caught.getMessage());
-			}
-
-			// On Success - Populate the ListBox
-			public void onSuccess(List<PropertyObj> propertyObjs) {
-				// Verify properties.  Adds anything missing, plus sets some default values
-				verifyServerProperties(dataSourceType, propertyObjs);
-				populateSourcePropertiesTable(propertyObjs);
-			}
-		};
-        
-		// Special case for VIEW_MODEL - bypasses the server call.
-		if(dataSourceType.equalsIgnoreCase(VIEW_MODEL)) {
-			List<PropertyObj> propObjs = new ArrayList<PropertyObj>();
-			// Verify properties.  For VIEW_MODEL this adds the DDL property.
-			verifyServerProperties(dataSourceType, propObjs);
-			populateSourcePropertiesTable(propObjs);
-		} else {
-			teiidMgrService.getPropertyDefns(dataSourceType,callback);	
-		}
+		// Gets the defaults for the specified type
+		List<PropertyObj> propObjs = this.dsPropertyObjMap.get(dataSourceType);
+        if(propObjs==null) {
+        	propObjs = new ArrayList<PropertyObj>();
+        }
+		// Verify properties.  For VIEW_MODEL this adds the DDL property.
+		verifyServerProperties(dataSourceType, propObjs);
+		populateSourcePropertiesTable(propObjs);
 	}
 	
 	/*
 	 * Populate the Properties table for the supplied DataSource type.  Use the provided saved property values as starting point.
 	 * @param dataSourceType the DataSource Type
 	 */
-	private void populateUsingSaved(final String dataSourceName, final String dataSourceType) {
+	private void populatePropsUsingSaved(final String dataSourceName, final String dataSourceType) {
 		// Set up the callback object.
-		AsyncCallback<List<PropertyObj>> callback = new AsyncCallback<List<PropertyObj>>() {
+		AsyncCallback<Map<String,List<PropertyObj>>> callback = new AsyncCallback<Map<String,List<PropertyObj>>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Init Default Properties Table Error", INIT_DEFAULT_PROPS_ERROR+caught.getMessage());
+				showErrorDialog(messages.initDSNameErrorTitle(), messages.initDSNameErrorMsg()+caught.getMessage());
 			}
 
 			// On Success - Populate the ListBox
-			public void onSuccess(List<PropertyObj> propertyObjs) {
-				// Get saved translator.  If null, use the default if possible.
-				String translator = savedNameTranslatorMap.get(dataSourceName);
-				if(translator==null) {
-					translator = DataSourceHelper.getDefaultTranslator(dataSourceType, availableTranslators);
-				}
-				translatorTextBox.setText(translator);
-
-				Map<String,String> savedPropValues = savedNamePropertyMap.get(dataSourceName);
-				verifyServerProperties(dataSourceType, propertyObjs);
-				populateSourcePropertiesTable(propertyObjs,savedPropValues);
+			public void onSuccess(Map<String,List<PropertyObj>> dsPropObjMap) {
+				// Update the DataSource to PropertyObj Map 
+				updateDSPropertyMap(dsPropObjMap);
+				
+				// update the properties
+				updateUsingSaved(dataSourceName,dataSourceType);
 			}
 		};
 
-
-		// Special case for VIEW_MODEL - bypasses the server call.
-		if(dataSourceType.equalsIgnoreCase(VIEW_MODEL)) {
-			// Get saved translator.  If null, use the default if possible.
-			String translator = savedNameTranslatorMap.get(dataSourceName);
-			if(translator==null) {
-				translator = DataSourceHelper.getDefaultTranslator(dataSourceType, availableTranslators);
-			}
-			translatorTextBox.setText(translator);
-
-			Map<String,String> savedPropValues = savedNamePropertyMap.get(dataSourceName);
-			
-			List<PropertyObj> propObjs = new ArrayList<PropertyObj>();
-			// Verify properties.  For VIEW_MODEL this adds the DDL property.
-			verifyServerProperties(dataSourceType, propObjs);
-			populateSourcePropertiesTable(propObjs,savedPropValues);
+		// If Map is empty, its not been initialized.  Do server call to populate available props first.
+		if(this.dsPropertyObjMap.isEmpty()) {
+			teiidMgrService.getDSPropertyObjMap(callback);	
 		} else {
-			teiidMgrService.getPropertyDefns(dataSourceType,callback);	
+			updateUsingSaved(dataSourceName,dataSourceType);
+		}	
+	}
+	
+	/*
+	 * Performs update using saved values - after dsPropertyObjMap has been checked and intialized, if necessary.
+	 */
+	private void updateUsingSaved(final String dataSourceName, final String dataSourceType) {
+		// Get saved translator.  If null, use the default if possible.
+		String translator = savedNameTranslatorMap.get(dataSourceName);
+		if(translator==null) {
+			translator = DataSourceHelper.getDefaultTranslator(dataSourceType, availableTranslators);
 		}
+		translatorTextBox.setText(translator);
+
+		Map<String,String> savedPropValues = savedNamePropertyMap.get(dataSourceName);
+
+		// Gets the defaults for the specified type
+		List<PropertyObj> propObjs = this.dsPropertyObjMap.get(dataSourceType);
+        if(propObjs==null) {
+        	propObjs = new ArrayList<PropertyObj>();
+        }
+        
+		// Verify properties.  For VIEW_MODEL this adds the DDL property.
+		verifyServerProperties(dataSourceType, propObjs);
+		
+		// Populate the Properties Table
+		populateSourcePropertiesTable(propObjs,savedPropValues);
 	}
 	
 	private void verifyServerProperties(String dataSourceType, List<PropertyObj> propertyObjs) {
@@ -468,17 +460,22 @@ public class CreateEditSourceDialog {
 	 */
 	private void populateSourceTypeListBox( ) {
 		// Set up the callback object.
-		AsyncCallback<List<String>> callback = new AsyncCallback<List<String>>() {
+		AsyncCallback<Map<String,List<PropertyObj>>> callback = new AsyncCallback<Map<String,List<PropertyObj>>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Init DataSource Names Error", INIT_DSNAMES_ERROR+caught.getMessage());
+				showErrorDialog(messages.initDSNameErrorTitle(), messages.initDSNameErrorMsg()+caught.getMessage());
 			}
 
 			// On Success - Populate the ListBox
-			public void onSuccess(List<String> typeNames) {
+			public void onSuccess(Map<String,List<PropertyObj>> dsPropObjMap) {
+				// Update the DataSource to PropertyObj Map for later use
+				updateDSPropertyMap(dsPropObjMap);
+				
+				// Get the set of typeNames
+				Set<String> typeNameSet = dsPropObjMap.keySet();
 				
 				// passes in 'runningOnOpenShift' flag to filter available sources on OpenShift
-				List<String> allowedTypes = DataSourceHelper.filterAllowedTypes(typeNames,isRunningOnOpenShift);
+				List<String> allowedTypes = DataSourceHelper.filterAllowedTypes(typeNameSet,isRunningOnOpenShift);
 				
 				// Make sure clear first
 				sourceTypeListBox.clear();
@@ -498,7 +495,17 @@ public class CreateEditSourceDialog {
 			}
 		};
 
-		teiidMgrService.getDataSourceTemplates(callback);	
+		teiidMgrService.getDSPropertyObjMap(callback);	
+	}
+	
+	/*
+	 * Update the DataSource to PropertyObj Map with the supplied map values
+	 */
+	private void updateDSPropertyMap(Map<String,List<PropertyObj>> dsPropMap) {
+		this.dsPropertyObjMap.clear();
+		if(dsPropMap!=null) {
+			this.dsPropertyObjMap.putAll(dsPropMap);
+		}
 	}
 	
 	/*
@@ -514,7 +521,7 @@ public class CreateEditSourceDialog {
 		AsyncCallback<List<String>> callback = new AsyncCallback<List<String>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Init Translator Names Error", INIT_TRANSLATOR_NAMES_ERROR+caught.getMessage());
+				showErrorDialog(messages.initTranslatorNamesErrorTitle(), messages.initTranslatorNamesErrorMsg()+caught.getMessage());
 			}
 
 			// On Success - Populate the ListBox
@@ -569,14 +576,14 @@ public class CreateEditSourceDialog {
 		// Validate the entered name
 		String name = getDialogSourceName();
 		if(name==null || name.trim().length()==0) {
-			statusStr = "Please enter a name for the DataSource";
+			statusStr = messages.statusEnterNameForDS();
 			statusOK = false;
 		}
 		
 		// If new source, check entered name against existing names
 		if(statusOK && addingSource) {
 			if(currentSourceNames.contains(name)) {
-				statusStr = "A DataSource with this name already exists";
+				statusStr = messages.statusDSNameAlreadyExists();
 				statusOK = false;
 			}
 		}
@@ -594,7 +601,7 @@ public class CreateEditSourceDialog {
 		if(!statusStr.equals("OK")) {
 			sourcePropertyStatusLabel.setText(statusStr);
 		} else {
-			sourcePropertyStatusLabel.setText("Click OK to accept");
+			sourcePropertyStatusLabel.setText(messages.statusClickOKToAccept());
 		}
 		
 		return statusOK;
@@ -609,12 +616,12 @@ public class CreateEditSourceDialog {
 	 * @param propsMap the property Map of name-value pairs
 	 */
 	private void addSourceModel(final String vdbName, String sourceName, String templateName,
-			                    String translatorName, Map propsMap) {
+			                    String translatorName, Map<String,String> propsMap) {
 		// Set up the callback object.
 		AsyncCallback<String> callback = new AsyncCallback<String>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Add Model Error", ADD_MODEL_ERROR+caught.getMessage());
+				showErrorDialog(messages.addModelErrorTitle(), messages.addModelErrorMsg()+caught.getMessage());
 			}
 
 			// On Success - Populate the ListBox
@@ -634,12 +641,12 @@ public class CreateEditSourceDialog {
 	 * @param viewModelName the name of the view model to create
 	 * @param propsMap the map of properties for the view
 	 */
-	public void addViewModel(final String vdbName, String viewModelName, Map propsMap) {
+	public void addViewModel(final String vdbName, String viewModelName, Map<String,String> propsMap) {
 		// Set up the callback object.
 		AsyncCallback<String> callback = new AsyncCallback<String>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Add Model Error", ADD_MODEL_ERROR+caught.getMessage());
+				showErrorDialog(messages.addModelErrorTitle(), messages.addModelErrorMsg()+caught.getMessage());
 			}
 
 			// On Success - Populate the ListBox
@@ -658,7 +665,6 @@ public class CreateEditSourceDialog {
 	 */
 	private void initErrorDialog() {
 		// Create the popup Error DialogBox
-		errorDialogBox.setText("Error Dialog");
 		errorDialogBox.setAnimationEnabled(true);
 		// We can set the id of a widget by accessing its Element
 		errorDialogCloseButton.getElement().setId("closeButton");

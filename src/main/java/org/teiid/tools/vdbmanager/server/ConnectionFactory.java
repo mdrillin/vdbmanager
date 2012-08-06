@@ -16,7 +16,6 @@ import javax.naming.NamingException;
 import javax.sql.DataSource;
 
 import org.teiid.adminapi.Admin;
-import org.teiid.adminapi.AdminException;
 import org.teiid.adminapi.AdminFactory;
 
 /**

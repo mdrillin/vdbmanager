@@ -1,6 +1,5 @@
 package org.teiid.tools.vdbmanager.client;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +28,7 @@ import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.HTMLPanel;
+import com.google.gwt.user.client.ui.HTMLTable.Cell;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.HasVerticalAlignment;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -38,30 +38,12 @@ import com.google.gwt.user.client.ui.PasswordTextBox;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
+import com.google.gwt.user.client.ui.Widget;
 
 /**
  * Entry point classes define <code>onModuleLoad()</code>.
  */
 public class vdbmanager implements EntryPoint {
-	/**
-	 * The message displayed to the user when the server cannot be reached or
-	 * returns an error.
-	 */
-	private static final String INIT_APP_ERROR = "An error occurred while "
-		+ "attempting to initialize the application ";
-	private static final String GET_VDB_ERROR = "An error occurred while "
-		+ "attempting to retrieve the VDB list. ";
-	private static final String CREATE_VDB_ERROR = "An error occurred while "
-		+ "attempting to create the VDB. ";
-	private static final String DELETE_VDB_ERROR = "An error occurred while "
-		+ "attempting to delete the VDB. ";
-	private static final String REMOVE_MODEL_ERROR = "An error occurred while "
-		+ "attempting to remove model(s). ";
-	private static final String REFRESH_TABLE_ERROR = "An error occurred while "
-		+ "attempting to refresh the sources table. ";
-
-	// 'No VDBs' ListBox entry
-	private static final String NO_VDBS = "None Available";
 	
 	// 'RunningOnOpenShift' flag
     private boolean isRunningOnOpenShift = false;
@@ -71,20 +53,25 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private final TeiidMgrServiceAsync teiidMgrService = GWT.create(TeiidMgrService.class);
 
-	//private final Messages messages = GWT.create(Messages.class);
+	private final Messages messages = GWT.create(Messages.class);
+
+	// 'No VDBs' ListBox entry
+	private final String NO_VDBS = messages.noVDBsMsg();
+	// Model Suffix
+	private final String MODEL_SUFFIX = messages.modelSuffix();
 
 	// Title for the Main Page
-	private Label titleLabel = new Label("Teiid Dynamic VDB Manager");
+	private Label titleLabel = new Label(messages.appTitle());
     // Link for Examples Panel
 	private HTMLPanel examplesLinkPanel = new HTMLPanel(getExamplesLinkHtml());
 	
 	// VDB Selection and Management controls
-	private Label vdbSelectionLabel = new Label("Selected VDB: ");
+	private Label vdbSelectionLabel = new Label(messages.selectedVDBLabel());
 	private ListBox vdbSelectionListBox = new ListBox();
-	private Button newVDBButton = new Button("New...");
-	private Button deleteVDBButton = new Button("Delete");
-	private Button refreshVDBButton = new Button("Refresh VDB");
-	private Button apiLoginButton = new Button("Login to API");
+	private Button newVDBButton = new Button(messages.newVDBButton());
+	private Button deleteVDBButton = new Button(messages.deleteVDBButton());
+	private Button refreshVDBButton = new Button(messages.refreshVDBButton());
+	private Button apiLoginButton = new Button(messages.apiLoginButton());
 	
 	// VDB Sources Table and Table Header
 	private Label vdbSourcesTableLabel = new Label();
@@ -92,14 +79,14 @@ public class vdbmanager implements EntryPoint {
 	private FlexTable vdbSourcesTable = new FlexTable();
 
     // Add, ReDeploy and Delete Sources Buttons
-	private Button deleteSourceButton = new Button("Delete Source");
-	private Button addSourceDialogButton = new Button("Add...");
-	private Button editSourceDialogButton = new Button("Edit...");
+	private Button deleteSourceButton = new Button(messages.deleteSourceButton());
+	private Button addSourceDialogButton = new Button(messages.addSourceButton());
+	private Button editSourceDialogButton = new Button(messages.editSourceButton());
 	
 	// New VDB Dialog Controls
 	private DialogBox appLoginDialogBox = new DialogBox();
-	private Button appLoginDialogOKButton = new Button("OK");
-	private Button appLoginDialogCloseButton = new Button("Cancel");
+	private Button appLoginDialogOKButton = new Button(messages.okButton());
+	private Button appLoginDialogCloseButton = new Button(messages.cancelButton());
 	private Label appLoginStatusLabel = new Label();
 	private TextBox adminPortTextBox = new TextBox();
 	private TextBox adminUsernameTextBox = new TextBox();
@@ -107,24 +94,24 @@ public class vdbmanager implements EntryPoint {
 
 	// New VDB Dialog Controls
 	private DialogBox newVDBDialogBox = new DialogBox();
-	private Button newVDBDialogOKButton = new Button("OK");
-	private Button newVDBDialogCloseButton = new Button("Cancel");
+	private Button newVDBDialogOKButton = new Button(messages.okButton());
+	private Button newVDBDialogCloseButton = new Button(messages.cancelButton());
 	private Label newVDBStatusLabel = new Label();
 	private TextBox newVDBNameTextBox = new TextBox();
 
 	// Delete VDB Dialog Controls
 	private DialogBox deleteVDBDialogBox = new DialogBox();
-	private Button deleteVDBDialogOKButton = new Button("OK");
-	private Button deleteVDBDialogCloseButton = new Button("Cancel");
+	private Button deleteVDBDialogOKButton = new Button(messages.okButton());
+	private Button deleteVDBDialogCloseButton = new Button(messages.cancelButton());
 
 	// Delete Source Dialog Controls
 	private DialogBox deleteSourceDialogBox = new DialogBox();
-	private Button deleteSourceDialogOKButton = new Button("OK");
-	private Button deleteSourceDialogCloseButton = new Button("Cancel");
+	private Button deleteSourceDialogOKButton = new Button(messages.okButton());
+	private Button deleteSourceDialogCloseButton = new Button(messages.cancelButton());
 
 	// Error Dialog Controls
 	private DialogBox errorDialogBox = new DialogBox();
-	private Button errorDialogCloseButton = new Button("Cancel");
+	private Button errorDialogCloseButton = new Button(messages.cancelButton());
 	private HTML serverResponseLabel = new HTML();
 	
 	// Maintain list of VDB Names - for checking on create
@@ -245,6 +232,23 @@ public class vdbmanager implements EntryPoint {
 		// VDB Sources Table
 		// --------------------
 		vdbSourcesTable.addStyleName("vdbSourcesTable");
+		// ClickHandler - Use Row selection to toggle the 'selected' state
+		vdbSourcesTable.addClickHandler(new ClickHandler() {
+		    public void onClick(ClickEvent event) {
+		        Cell cell = vdbSourcesTable.getCellForEvent(event);
+		        int rowIndex = cell.getRowIndex();
+		        int colIndex = cell.getCellIndex();
+		        if(rowIndex>0 && colIndex>0) {
+		        	// Toggle the Selected checkbox
+		        	Widget widget = vdbSourcesTable.getWidget(rowIndex, 0);
+		        	if(widget!=null && widget instanceof CheckBox) {
+		                CheckBox checkBox = (CheckBox) widget;
+		                checkBox.setValue(!checkBox.getValue());
+		                setSourceMgmtButtonEnablements();
+		            }
+		        }
+		    }
+		});
 		RootPanel.get("vdbSourcesTableContainer").add(vdbSourcesTable);
 
 		// ----------------------------------------------
@@ -324,7 +328,6 @@ public class vdbmanager implements EntryPoint {
 
 		// Change Listener for New VDB Name TextBox - does property validation
 		adminPortTextBox.addKeyUpHandler(new KeyUpHandler() {
-	        @Override
 	        public void onKeyUp(KeyUpEvent event) {
 	        	//setNewVDBDialogOKButtonEnablement();
 	        }
@@ -360,7 +363,6 @@ public class vdbmanager implements EntryPoint {
 
 		// Change Listener for New VDB Name TextBox - does property validation
 		newVDBNameTextBox.addKeyUpHandler(new KeyUpHandler() {
-	        @Override
 	        public void onKeyUp(KeyUpEvent event) {
 	        	setNewVDBDialogOKButtonEnablement();
 	        }
@@ -500,8 +502,8 @@ public class vdbmanager implements EntryPoint {
 	private String getSourceNameForModel(String modelName) {
 		// Source name is derived from the modelname
 		String sourceName = null;
-		if(modelName!=null && modelName.endsWith("Model")) {
-			sourceName=modelName.substring(0, modelName.length()-5);
+		if(modelName!=null && modelName.endsWith(MODEL_SUFFIX)) {
+			sourceName=modelName.substring(0, modelName.length()-MODEL_SUFFIX.length());
 		}	
 		return sourceName;
 	}
@@ -601,14 +603,14 @@ public class vdbmanager implements EntryPoint {
 		// Validate the entered VDB name
 		String newVDBName = newVDBNameTextBox.getText();
 		if(newVDBName==null || newVDBName.trim().length()==0) {
-			statusStr = "Please enter a name for the VDB";
+			statusStr = messages.statusEnterNameForVDB();
 			statusOK = false;
 		}
 		
 		// Check entered name against existing names
 		if(statusOK) {
 			if(this.currentVDBNames.contains(newVDBName)) {
-				statusStr = "A VDB with this name already exists";
+				statusStr = messages.statusVDBNameAlreadyExists();
 				statusOK = false;
 			}
 		}
@@ -625,7 +627,7 @@ public class vdbmanager implements EntryPoint {
 			    }
 			}
 			if(!allValidChars) {
-				statusStr = "The VDB name contains invalid character(s)";
+				statusStr = messages.statusVDBNameContainsInvalidChars();
 				statusOK = false;
 			}
 		}
@@ -635,7 +637,7 @@ public class vdbmanager implements EntryPoint {
 		if(!statusStr.equals("OK")) {
 			newVDBStatusLabel.setText(statusStr);
 		} else {
-			newVDBStatusLabel.setText("Click OK to accept");
+			newVDBStatusLabel.setText(messages.statusClickOKToAccept());
 		}
 		
 		return statusOK;
@@ -652,7 +654,7 @@ public class vdbmanager implements EntryPoint {
 		AsyncCallback<List<String>> callback = new AsyncCallback<List<String>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Application Init Error", INIT_APP_ERROR+":<br/><br/>"+caught.getMessage()+"<br/>");
+				showErrorDialog(messages.initAppErrorTitle(), messages.initAppErrorMsg()+":<br/><br/>"+caught.getMessage()+"<br/>");
 				apiLoginButton.setEnabled(true);
 			}
 
@@ -732,7 +734,7 @@ public class vdbmanager implements EntryPoint {
 
 		// Check for NO_VDBS
 		if(NO_VDBS.equalsIgnoreCase(vdbName)) {
-		    vdbSourcesTableLabel.setText("No Dynamic VDBs are available");
+		    vdbSourcesTableLabel.setText(messages.vdbSourcesTableLabelNoVDBs());
 		    vdbStatusLabel.setText("");
 		}
 		
@@ -757,12 +759,12 @@ public class vdbmanager implements EntryPoint {
 				}
 			}
 		} else {
-			vdbSourcesTable.setText(0,0,"Selected");
-			vdbSourcesTable.setText(0,1,"Model Name");
-			vdbSourcesTable.setText(0,2,"Model Type");
-			vdbSourcesTable.setText(0,3,"Translator");
-			vdbSourcesTable.setText(0,4,"JNDI Source");
-			vdbSourcesTable.setText(0,5,"Status");
+			vdbSourcesTable.setText(0,0,messages.vdbTableHeader_Selected());
+			vdbSourcesTable.setText(0,1,messages.vdbTableHeader_ModelName());
+			vdbSourcesTable.setText(0,2,messages.vdbTableHeader_ModelType());
+			vdbSourcesTable.setText(0,3,messages.vdbTableHeader_Translator());
+			vdbSourcesTable.setText(0,4,messages.vdbTableHeader_JNDISrc());
+			vdbSourcesTable.setText(0,5,messages.vdbTableHeader_Status());
 			vdbSourcesTable.getRowFormatter().addStyleName(0, "vdbSourcesTableHeader");
 		}
 		
@@ -777,7 +779,7 @@ public class vdbmanager implements EntryPoint {
 			// Data Row 1 is header Row
 			int nCols = row.size();
 			if(iRow==1) {
-				vdbSourcesTable.setText(iRow-1,0,"Selected");
+				vdbSourcesTable.setText(iRow-1,0,messages.vdbTableHeader_Selected());
 				vdbSourcesTable.getCellFormatter().addStyleName(iRow-1, 0, "vdbSourcesTableCell");
 			} else {
 				// First Column is a remove checkbox
@@ -824,7 +826,7 @@ public class vdbmanager implements EntryPoint {
 		AsyncCallback<List<List<DataItem>>> callback = new AsyncCallback<List<List<DataItem>>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Remove Model Error", REMOVE_MODEL_ERROR+caught.getMessage());
+				showErrorDialog(messages.removeModelErrorTitle(), messages.removeModelErrorMsg()+caught.getMessage());
 				setSourceMgmtButtonEnablements();
 			}
 
@@ -848,7 +850,7 @@ public class vdbmanager implements EntryPoint {
 	private void setUIStatusForVDBRedeploy() {
 		vdbStatusLabel.removeStyleName("vdbStatusActive");
 		vdbStatusLabel.addStyleName("vdbStatusInactive");
-		vdbStatusLabel.setText("Re-loading - Please Wait...");
+		vdbStatusLabel.setText(messages.statusVDBReloading());
 		clearSourcesTable();
 	}
 	
@@ -862,7 +864,6 @@ public class vdbmanager implements EntryPoint {
 		this.refreshVDBButton.setEnabled(false);
 		this.apiLoginButton.setEnabled(false);
 		this.addSourceDialogButton.setEnabled(false);
-		this.vdbSelectionLabel.setText("Selected VDB: ");
 		this.vdbStatusLabel.setText("");
 		
 		clearSourcesTable();
@@ -879,7 +880,7 @@ public class vdbmanager implements EntryPoint {
 		AsyncCallback<List<String>> callback = new AsyncCallback<List<String>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("CreateVDB Error", CREATE_VDB_ERROR+caught.getMessage());
+				showErrorDialog(messages.createVDBErrorTitle(), messages.createVDBErrorMsg()+caught.getMessage());
 				setSourceMgmtButtonEnablements();
 			}
 
@@ -902,7 +903,7 @@ public class vdbmanager implements EntryPoint {
 		AsyncCallback<List<String>> callback = new AsyncCallback<List<String>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("DeleteVDB Error", DELETE_VDB_ERROR+caught.getMessage());
+				showErrorDialog(messages.deleteVDBErrorTitle(), messages.deleteVDBErrorMsg()+caught.getMessage());
 				setSourceMgmtButtonEnablements();
 			}
 
@@ -925,7 +926,7 @@ public class vdbmanager implements EntryPoint {
 		AsyncCallback<List<List<DataItem>>> callback = new AsyncCallback<List<List<DataItem>>>() {
 			// On Failure - show Error Dialog
 			public void onFailure(Throwable caught) {
-				showErrorDialog("Refresh VDB Sources Error", REFRESH_TABLE_ERROR+caught.getMessage());
+				showErrorDialog(messages.refreshTableErrorTitle(), messages.refreshTableErrorMsg()+caught.getMessage());
 				setSourceMgmtButtonEnablements();
 			}
 
@@ -956,7 +957,6 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private void initErrorDialog() {
 		// Create the popup Error DialogBox
-		errorDialogBox.setText("Error Dialog");
 		errorDialogBox.setAnimationEnabled(true);
 		// We can set the id of a widget by accessing its Element
 		errorDialogCloseButton.getElement().setId("closeButton");
@@ -993,7 +993,7 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private void initDeleteSourceDialog( ) {
 		// Create the popup DialogBox
-		deleteSourceDialogBox.setText("Delete Source(s)");
+		deleteSourceDialogBox.setText(messages.dialogDeleteSourceTitle());
 		deleteSourceDialogBox.setAnimationEnabled(true);
 		
 		// Dialog Box - Panel Content
@@ -1001,7 +1001,7 @@ public class vdbmanager implements EntryPoint {
 		vPanel.addStyleName("deleteSourceDialogPanel");
 		
 		// Message
-		Label titleLabel = new Label(" Click 'OK' to delete the Source(s) ");
+		Label titleLabel = new Label(messages.dialogDeleteSourceMsg());
 		titleLabel.addStyleName("labelTextBold");
 		titleLabel.addStyleName("bottomPadding10");
 		vPanel.add(titleLabel);
@@ -1027,7 +1027,7 @@ public class vdbmanager implements EntryPoint {
 		initDeleteSourceDialog();
 		
 		deleteSourceDialogBox.showRelativeTo(examplesLinkPanel);
-		deleteSourceDialogCloseButton.setFocus(true);
+		deleteSourceDialogOKButton.setFocus(true);
 	}
 
 	/*
@@ -1035,7 +1035,7 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private void initAppLoginDialog( ) {
 		// Create the popup Error DialogBox
-		appLoginDialogBox.setText("Enter Admin Login info");
+		appLoginDialogBox.setText(messages.dialogAppLoginTitle());
 		appLoginDialogBox.setAnimationEnabled(true);
 		
 		// Dialog Box - Panel Content
@@ -1043,7 +1043,7 @@ public class vdbmanager implements EntryPoint {
 		vPanel.addStyleName("appLoginDialogPanel");
 		
 		// Message
-		Label titleLabel = new Label("Enter Login Info: ");
+		Label titleLabel = new Label(messages.dialogAppLoginMsg());
 		titleLabel.addStyleName("labelTextBold");
 		titleLabel.addStyleName("bottomPadding10");
 		vPanel.add(titleLabel);
@@ -1056,7 +1056,7 @@ public class vdbmanager implements EntryPoint {
 				
 		// Admin Port widgets
 		HorizontalPanel adminPortPanel = new HorizontalPanel();
-		Label adminPortLabel = new Label("Port: ");
+		Label adminPortLabel = new Label(messages.dialogAppLoginAdminPortLabel());
 		adminPortLabel.addStyleName("labelTextBold");
 		adminPortLabel.addStyleName("rightPadding5");
 		
@@ -1068,7 +1068,7 @@ public class vdbmanager implements EntryPoint {
 		
 		// Admin Username widgets
 		HorizontalPanel adminUsernamePanel = new HorizontalPanel();
-		Label adminUsernameLabel = new Label("Username: ");
+		Label adminUsernameLabel = new Label(messages.dialogAppLoginUsernameLabel());
 		adminUsernameLabel.addStyleName("labelTextBold");
 		adminUsernameLabel.addStyleName("rightPadding5");
 		
@@ -1080,7 +1080,7 @@ public class vdbmanager implements EntryPoint {
 		
 		// Admin Password widgets
 		HorizontalPanel adminPasswordPanel = new HorizontalPanel();
-		Label adminPasswordLabel = new Label("Password: ");
+		Label adminPasswordLabel = new Label(messages.dialogAppLoginPasswordLabel());
 		adminPasswordLabel.addStyleName("labelTextBold");
 		adminPasswordLabel.addStyleName("rightPadding5");
 		
@@ -1115,7 +1115,7 @@ public class vdbmanager implements EntryPoint {
 		initAppLoginDialog( );
 		
 		appLoginDialogBox.showRelativeTo(apiLoginButton);
-		appLoginDialogCloseButton.setFocus(true);
+		adminUsernameTextBox.setFocus(true);
 	}
 
 	/*
@@ -1123,7 +1123,7 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private void initNewVDBDialog( ) {
 		// Create the popup Error DialogBox
-		newVDBDialogBox.setText("Create a New Dynamic VDB");
+		newVDBDialogBox.setText(messages.dialogCreateVDBTitle());
 		newVDBDialogBox.setAnimationEnabled(true);
 		
 		// Dialog Box - Panel Content
@@ -1131,7 +1131,7 @@ public class vdbmanager implements EntryPoint {
 		vPanel.addStyleName("newVDBDialogPanel");
 		
 		// Message
-		Label titleLabel = new Label("Enter a name for the new VDB: ");
+		Label titleLabel = new Label(messages.dialogCreateVDBEnterName());
 		titleLabel.addStyleName("labelTextBold");
 		titleLabel.addStyleName("bottomPadding10");
 		vPanel.add(titleLabel);
@@ -1144,7 +1144,7 @@ public class vdbmanager implements EntryPoint {
 				
 		// Source Name widgets
 		HorizontalPanel vdbNamePanel = new HorizontalPanel();
-		Label newVDBNameLabel = new Label("Name: ");
+		Label newVDBNameLabel = new Label(messages.dialogCreateVDBName());
 		newVDBNameLabel.addStyleName("labelTextBold");
 		newVDBNameLabel.addStyleName("rightPadding5");
 		
@@ -1175,9 +1175,8 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private void showNewVDBDialog( ) {
 		initNewVDBDialog( );
-		
 		newVDBDialogBox.showRelativeTo(newVDBButton);
-		newVDBDialogCloseButton.setFocus(true);
+		newVDBNameTextBox.setFocus(true);
 	}
 	
 	/*
@@ -1186,7 +1185,7 @@ public class vdbmanager implements EntryPoint {
 	 */
 	private void initDeleteVDBDialog(final String vdbName) {
 		// Create the popup Error DialogBox
-		deleteVDBDialogBox.setText("Delete a Dynamic VDB");
+		deleteVDBDialogBox.setText(messages.dialogDeleteVDBTitle());
 		deleteVDBDialogBox.setAnimationEnabled(true);
 		
 		// Dialog Box - Panel Content
