@@ -12,32 +12,32 @@ import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
 @RemoteServiceRelativePath("teiid")
 public interface TeiidMgrService extends RemoteService {
 
-	  Boolean isRunningOnOpenShift() throws Exception;
+	  Boolean isRunningOnOpenShift();
 	  
-	  List<String> initApplication(int serverPort, String userName, String password) throws Exception;
+	  List<String> initApplication(int serverPort, String userName, String password) throws TeiidServiceException;
 	  
-	  List<String> getDynamicVDBNames() throws Exception;
+	  List<String> getDynamicVDBNames() throws TeiidServiceException;
 
-	  List<String> getDataSourceTemplates() throws Exception;
+	  List<String> getDataSourceTemplates() throws TeiidServiceException;
 		
-	  Map<String,List<PropertyObj>> getDSPropertyObjMap() throws Exception;
+	  Map<String,List<PropertyObj>> getDSPropertyObjMap() throws TeiidServiceException;
 
-	  List<String> getPropertyNames(String templateName) throws Exception;
+	  List<String> getPropertyNames(String templateName) throws TeiidServiceException;
 	  
-	  List<PropertyObj> getPropertyDefns(String templateName) throws Exception;
+	  List<PropertyObj> getPropertyDefns(String templateName) throws TeiidServiceException;
 	  
-	  List<String> getTranslatorNames() throws Exception;
+	  List<String> getTranslatorNames() throws TeiidServiceException;
 
-	  List<String> createVDB(String vdbName) throws Exception;
+	  List<String> createVDB(String vdbName) throws TeiidServiceException;
 
-	  List<String> deleteVDB(String vdbName) throws Exception;
+	  List<String> deleteVDB(String vdbName) throws TeiidServiceException;
 	  
-	  List<List<DataItem>> getVDBModelInfo(String vdbName) throws Exception;
+	  List<List<DataItem>> getVDBModelInfo(String vdbName) throws TeiidServiceException;
 
-	  List<List<DataItem>> removeModels(String vdbName, List<String> removeModelNameList) throws Exception;		
+	  List<List<DataItem>> removeModels(String vdbName, List<String> removeModelNameList) throws TeiidServiceException;		
 
-	  String addSourceAndModel(String vdbName, String sourceName, String templateName, String translatorName, Map<String,String> propsMap ) throws Exception;
+	  String addSourceAndModel(String vdbName, String sourceName, String templateName, String translatorName, Map<String,String> propsMap ) throws TeiidServiceException;
 
-	  String addViewModel(String vdbName, String viewModelName, Map<String,String> propsMap ) throws Exception;
+	  String addViewModel(String vdbName, String viewModelName, Map<String,String> propsMap ) throws TeiidServiceException;
 	    
 }

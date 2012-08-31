@@ -2,6 +2,8 @@ package org.teiid.tools.vdbmanager.server;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,6 +27,7 @@ import org.teiid.adminapi.impl.VDBMetadataParser;
 import org.teiid.tools.vdbmanager.client.DataItem;
 import org.teiid.tools.vdbmanager.client.PropertyObj;
 import org.teiid.tools.vdbmanager.client.TeiidMgrService;
+import org.teiid.tools.vdbmanager.client.TeiidServiceException;
 
 import com.google.gwt.user.server.rpc.RemoteServiceServlet;
 
@@ -45,7 +48,7 @@ TeiidMgrService {
 	 * (non-Javadoc)
 	 * @see org.teiid.webapp.client.TeiidService#isRunningOnOpenShift( )
 	 */
-	public Boolean isRunningOnOpenShift( ) throws Exception {
+	public Boolean isRunningOnOpenShift( ) {
 		String openShiftAppName = System.getenv("OPENSHIFT_APP_NAME");
 		if(openShiftAppName!=null && openShiftAppName.trim().length()>0) {
 			return new Boolean(true);
@@ -57,7 +60,7 @@ TeiidMgrService {
 	 * (non-Javadoc)
 	 * @see org.teiid.webapp.client.TeiidService#initApplication(int, java.lang.String, java.lang.String, java.lang.String)
 	 */
-	public List<String> initApplication(int serverPort, String userName, String password) throws Exception {
+	public List<String> initApplication(int serverPort, String userName, String password) throws TeiidServiceException {
 		String serverHost = LOCALHOST;
 		
 		// First priority is use OpenShift - if running on OpenShift
@@ -77,7 +80,11 @@ TeiidMgrService {
 			serverHost = serverIP;
 		}
 		// Init the Admin API
-		initAdminApi(serverHost,serverPort,userName,password);
+		try {
+			initAdminApi(serverHost,serverPort,userName,password);
+		} catch (Exception e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		
 		return getDynamicVDBNames();
 	}
@@ -97,12 +104,17 @@ TeiidMgrService {
 	 * Get the current list of Dynamic VDBs
 	 * @return the list of Dynamic VDBs
 	 */
-	public List<String> getDynamicVDBNames() throws Exception {
+	public List<String> getDynamicVDBNames() throws TeiidServiceException {
 		List<String> vdbNames = new ArrayList<String>();
 		if(this.admin==null) return vdbNames;
 		
 		// Get list of VDBS - get vdbName VDB (if already deployed)
-		Collection<? extends VDB> vdbs = this.admin.getVDBs();
+		Collection<? extends VDB> vdbs = null;
+		try {
+			vdbs = this.admin.getVDBs();
+		} catch (AdminException e) {
+		    throw new TeiidServiceException(e.getMessage());
+		}
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
 			if(vdbMeta.isDynamic()) {
@@ -119,12 +131,17 @@ TeiidMgrService {
 	 * Get the current list of Templates
 	 * @return the list of Templates
 	 */
-	public List<String> getDataSourceTemplates() throws Exception {
+	public List<String> getDataSourceTemplates() throws TeiidServiceException {
 		List<String> templateNames = new ArrayList<String>();
 		if(this.admin==null) return templateNames;
 		
 		// Get list of DataSource Template Names
-		Collection<String> dsTemplates = (Collection<String>) this.admin.getDataSourceTemplateNames();
+		Collection<String> dsTemplates = null;
+		try {
+			dsTemplates = (Collection<String>) this.admin.getDataSourceTemplateNames();
+		} catch (AdminException e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		
 		// Filter out un-wanted names
 		for(String template : dsTemplates) {
@@ -143,7 +160,7 @@ TeiidMgrService {
 	 * Get a Map of the current Templates to their PropertyObjects
 	 * @return the Map of dsTemplate to List of PropertyObjects
 	 */
-	public Map<String,List<PropertyObj>> getDSPropertyObjMap() throws Exception {
+	public Map<String,List<PropertyObj>> getDSPropertyObjMap() throws TeiidServiceException {
 		// Define Map to hold the results
 		Map<String,List<PropertyObj>> resultMap = new HashMap<String,List<PropertyObj>>();
 		
@@ -164,12 +181,17 @@ TeiidMgrService {
 	 * Get the current list of Translator names
 	 * @return the list of Translator names
 	 */
-	public List<String> getTranslatorNames() throws Exception {
+	public List<String> getTranslatorNames() throws TeiidServiceException {
 		List<String> transNames = new ArrayList<String>();
 		if(this.admin==null) return transNames;
 		
 		// Get list of DataSource Template Names
-		Collection<? extends Translator> translators = this.admin.getTranslators();
+		Collection<? extends Translator> translators = null;
+		try {
+			translators = this.admin.getTranslators();
+		} catch (AdminException e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		
 		// Filter out un-wanted names
 		for(Translator translator : translators) {
@@ -189,38 +211,41 @@ TeiidMgrService {
 	 * @param vdbName name of the VDB to create
 	 * @return the new List of VDB names
 	 */
-	public List<String> createVDB(String vdbName) throws Exception {
+	public List<String> createVDB(String vdbName) throws TeiidServiceException {
 		List<String> vdbNames = new ArrayList<String>();
 		
  		if(this.admin==null) return vdbNames;
  		
-		// Get list of VDBS - get vdbName VDB (if already deployed)
-		Collection<? extends VDB> vdbs = this.admin.getVDBs();
-		
-		VDBMetaData workVDBMetaData = null;
-		for(VDB vdb : vdbs) {
-			// Bug workaround (the name may be null).  Only one VDB, so use - if it exists...
-			if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {
-				workVDBMetaData = (VDBMetaData)vdb;
-				workVDBMetaData.setName(vdbName);
-			}
-		}
-		
-		// Only deploy the VDB if it was not found
-		if(workVDBMetaData==null) {
-			// Deployment name for vdb must end in '-vdb.xml'
-			String deploymentName = vdbName+"-vdb.xml";
-			
-			// Deploy the VDB
-			String deployString = createNewDeployment(vdbName,1);
-			this.admin.deploy(deploymentName,new ByteArrayInputStream(deployString.getBytes("UTF-8")));
+ 		try {
+ 			// Get list of VDBS - get vdbName VDB (if already deployed)
+ 			Collection<? extends VDB> vdbs = this.admin.getVDBs();
 
-			waitForVDBLoad(this.admin, vdbName, 1, 120);
-			
-			// Add the VDB Source.  If it exists, it is deleted first - then re-added.
-			addVDBSource(vdbName);
-		}
-		
+ 			VDBMetaData workVDBMetaData = null;
+ 			for(VDB vdb : vdbs) {
+ 				// Bug workaround (the name may be null).  Only one VDB, so use - if it exists...
+ 				if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {
+ 					workVDBMetaData = (VDBMetaData)vdb;
+ 					workVDBMetaData.setName(vdbName);
+ 				}
+ 			}
+
+ 			// Only deploy the VDB if it was not found
+ 			if(workVDBMetaData==null) {
+ 				// Deployment name for vdb must end in '-vdb.xml'
+ 				String deploymentName = vdbName+"-vdb.xml";
+
+ 				// Deploy the VDB
+ 				String deployString = createNewDeployment(vdbName,1);
+ 				this.admin.deploy(deploymentName,new ByteArrayInputStream(deployString.getBytes("UTF-8")));
+
+ 				waitForVDBLoad(this.admin, vdbName, 1, 120);
+
+ 				// Add the VDB Source.  If it exists, it is deleted first - then re-added.
+ 				addVDBSource(vdbName);
+ 			}
+ 		} catch (Exception e) {
+ 			throw new TeiidServiceException(e.getMessage());
+ 		}
 		// Return the new list of VDB names
 		return getDynamicVDBNames();
 	}
@@ -237,15 +262,19 @@ TeiidMgrService {
 	 * @param vdbName name of the VDB to delete
 	 * @return the new List of VDB names
 	 */
-	public List<String> deleteVDB(String vdbName) throws Exception {
+	public List<String> deleteVDB(String vdbName) throws TeiidServiceException {
 		// Deployment name for dynamic vdb ends in '-vdb.xml'
 		String vdbDeployName = vdbName+"-vdb.xml";
-		// Undeploy the working VDB
-		admin.undeploy(vdbDeployName);
 		
-		// Delete the VDB Source
-		deleteSource(vdbName);
-		
+		try {
+			// Undeploy the working VDB
+			admin.undeploy(vdbDeployName);
+
+			// Delete the VDB Source
+			deleteSource(vdbName);
+		} catch (Exception e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		// Return the new list of VDB names
 		return getDynamicVDBNames();
 	}
@@ -262,6 +291,8 @@ TeiidMgrService {
 		sb.append("<vdb name=\""+vdbName+"\" version=\""+vdbVersion+"\">");
 		sb.append("<description>A Dynamic VDB</description>");
         sb.append("<property name=\"UseConnectorMetadata\" value=\"true\" />");
+        sb.append("<property name=\"{http://teiid.org/rest}auto-generate\" value=\"true\" />");
+        sb.append("<property name=\"{http://teiid.org/rest}security-type\" value=\"none\" />");
         sb.append("<translator name=\"rest\" type=\"ws\" description=\"Rest override\">");
         sb.append("<property name=\"DefaultBinding\" value=\"HTTP\"/>");
         sb.append("<property name=\"DefaultServiceMode\" value=\"MESSAGE\"/>");
@@ -323,11 +354,16 @@ TeiidMgrService {
 	 * @param vdbName name of the VDB
 	 * @return the List of ModelInfo data
 	 */
-	public List<List<DataItem>> getVDBModelInfo(String vdbName) throws Exception {
+	public List<List<DataItem>> getVDBModelInfo(String vdbName) throws TeiidServiceException {
 		List<List<DataItem>> rowList = new ArrayList<List<DataItem>>();
 		
 		// Get list of VDBS - get the named VDB
-		Collection<? extends VDB> vdbs = admin.getVDBs();
+		Collection<? extends VDB> vdbs = null;
+		try {
+			vdbs = admin.getVDBs();
+		} catch (AdminException e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		VDBMetaData workVDBMetaData = null;
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
@@ -399,7 +435,7 @@ TeiidMgrService {
 					for(String error: errors) {
 						if(error.indexOf("TEIID11009")!=-1 || error.indexOf("TEIID60000")!=-1 || error.indexOf("TEIID31097")!=-1) {
 							connectionError=true;
-						} else if(error.indexOf("TEIID31080")!=-1) {
+						} else if(error.indexOf("TEIID31080")!=-1 || error.indexOf("TEIID31071")!=-1) {
 							validationError=true;
 						} else if(error.indexOf("TEIID50029")!=-1) {
 							isLoading=true;
@@ -445,49 +481,54 @@ TeiidMgrService {
 	 * @param removeModelNameList the list of model names to remove
 	 * @return the List of ModelInfo data
 	 */
-	public List<List<DataItem>> removeModels(String vdbName, List<String> removeModelNameList) throws Exception {		
+	public List<List<DataItem>> removeModels(String vdbName, List<String> removeModelNameList) throws TeiidServiceException {		
 		// Get list of VDBS - get the named VDB
-		Collection<? extends VDB> vdbs = admin.getVDBs();
-		VDBMetaData workVDBMetaData = null;
-		for(VDB vdb : vdbs) {
-			if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {
-				workVDBMetaData = (VDBMetaData)vdb;
-				workVDBMetaData.setName(vdbName);
-			}
-		}
+		Collection<? extends VDB> vdbs = null;
 		
-		VDBMetaData newVDB = null;
+		try {
+			vdbs = admin.getVDBs();
+			VDBMetaData workVDBMetaData = null;
+			for(VDB vdb : vdbs) {
+				if(vdb.getName()==null || vdb.getName().equalsIgnoreCase(vdbName)) {
+					workVDBMetaData = (VDBMetaData)vdb;
+					workVDBMetaData.setName(vdbName);
+				}
+			}
 
-		// Re-configure the VDB Models, remove the supplied list if present
-		if(workVDBMetaData!=null) {
-			List<Model> currentModels = workVDBMetaData.getModels();
-			List<ModelMetaData> newModels = new ArrayList<ModelMetaData>();
-			List<ModelMetaData> removeModels = new ArrayList<ModelMetaData>();
-			for(Model model: currentModels) {
-				String currentName = model.getName();
-				// Keep the model - unless its in the remove list
-				if(!removeModelNameList.contains(currentName)) {
-					newModels.add((ModelMetaData)model);
-				} else {
-					removeModels.add((ModelMetaData)model);
+			VDBMetaData newVDB = null;
+
+			// Re-configure the VDB Models, remove the supplied list if present
+			if(workVDBMetaData!=null) {
+				List<Model> currentModels = workVDBMetaData.getModels();
+				List<ModelMetaData> newModels = new ArrayList<ModelMetaData>();
+				List<ModelMetaData> removeModels = new ArrayList<ModelMetaData>();
+				for(Model model: currentModels) {
+					String currentName = model.getName();
+					// Keep the model - unless its in the remove list
+					if(!removeModelNameList.contains(currentName)) {
+						newModels.add((ModelMetaData)model);
+					} else {
+						removeModels.add((ModelMetaData)model);
+					}
 				}
-			}
-			// Remove Data Sources related to the models being removed
-			for(ModelMetaData model: removeModels) {
-				List<String> srcsToDelete = model.getSourceNames();
-				for(String src: srcsToDelete) {
-					deleteSource(src);
+				// Remove Data Sources related to the models being removed
+				for(ModelMetaData model: removeModels) {
+					List<String> srcsToDelete = model.getSourceNames();
+					for(String src: srcsToDelete) {
+						deleteSource(src);
+					}
 				}
+				// Now reset the Models on the VDB to those being kept
+				newVDB = new VDBMetaData();
+				newVDB.setName(vdbName);
+				newVDB.setModels(newModels);
 			}
-			// Now reset the Models on the VDB to those being kept
-			newVDB = new VDBMetaData();
-			newVDB.setName(vdbName);
-			newVDB.setModels(newModels);
+
+			// Re-Deploy the VDB
+			redeployVDB(vdbName, newVDB);
+		} catch (Exception e) {
+			throw new TeiidServiceException(e.getMessage());
 		}
-
-		// Re-Deploy the VDB
-		redeployVDB(vdbName, newVDB);
-
 		// Return the Model Info
 		return getVDBModelInfo(vdbName);
 	}
@@ -503,14 +544,17 @@ TeiidMgrService {
 	 */
 	public String addSourceAndModel(String vdbName, 
 			                        String sourceName, String templateName, String translatorName, 
-			                        Map<String,String> sourcePropMap ) throws Exception {
+			                        Map<String,String> sourcePropMap ) throws TeiidServiceException {
 
-		// Create the dataSource
-		addSource(sourceName,templateName,sourcePropMap);
-		
-		// Add Model to the VDB - and Re-Deploy it.
-		addSourceModelToVDB(vdbName, sourceName, translatorName);
-		
+		try {
+			// Create the dataSource
+			addSource(sourceName,templateName,sourcePropMap);
+
+			// Add Model to the VDB - and Re-Deploy it.
+			addSourceModelToVDB(vdbName, sourceName, translatorName);
+		} catch (Exception e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		return "Success";
 	}
 	
@@ -523,21 +567,30 @@ TeiidMgrService {
 	 * @return the List of ModelInfo data
 	 */
 	public String addViewModel(String vdbName, String viewModelName, 
-			                        Map<String,String> sourcePropMap ) throws Exception {
+			                        Map<String,String> sourcePropMap ) throws TeiidServiceException {
 
 		// Get the DDL String
 		String ddlString = sourcePropMap.get(DDL_KEY);
 		
 		// Add View Model to the VDB - and Re-Deploy it.
-		addViewModelToVDB(vdbName, viewModelName, ddlString);
+		try {
+			addViewModelToVDB(vdbName, viewModelName, ddlString);
+		} catch (Exception e) {
+			throw new TeiidServiceException(e.getMessage());
+		}
 		
 		return "Success";
 	}
 	
-	public List<String> getPropertyNames(String templateName) throws Exception {
+	public List<String> getPropertyNames(String templateName) throws TeiidServiceException {
 		List<String> propNames = new ArrayList<String>();
 		if(this.admin!=null && templateName!=null && !templateName.trim().isEmpty()) {
-			Collection<? extends PropertyDefinition> propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
+			Collection<? extends PropertyDefinition> propDefnList = null;
+			try {
+				propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
+			} catch (AdminException e) {
+				throw new TeiidServiceException(e.getMessage());
+			}
 			for(PropertyDefinition propDefn: propDefnList) {
 				if(propDefn.isRequired()) {
 					String name = propDefn.getName();
@@ -548,10 +601,15 @@ TeiidMgrService {
 		return propNames;
 	}
 	
-	public List<PropertyObj> getPropertyDefns(String templateName) throws Exception {
+	public List<PropertyObj> getPropertyDefns(String templateName) throws TeiidServiceException {
 		List<PropertyObj> propDefns = new ArrayList<PropertyObj>();
 		if(this.admin!=null && templateName!=null && !templateName.trim().isEmpty()) {
-			Collection<? extends PropertyDefinition> propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
+			Collection<? extends PropertyDefinition> propDefnList = null;
+			try {
+				propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
+			} catch (AdminException e) {
+				throw new TeiidServiceException(e.getMessage());
+			}
 			for(PropertyDefinition propDefn: propDefnList) {
 				PropertyObj pDefn = new PropertyObj();
                 // ------------------------
@@ -734,9 +792,17 @@ TeiidMgrService {
 	private void redeployVDB(String vdbName, VDBMetaData vdb) throws Exception {
 		// redeploy the VDB using the supplied deployment name
 		if(admin!=null && vdb!=null) {
+			
+			// Before attempting to redeploy the VDB, 
+			// Make sure that any Model Validity errors are cleared.
+			VDBMetaData deploymentVDB = removeValidationErrors(vdb);
+					
+			// For debug purposes
+			//save("/home/userdir/testVDBs/dynamic-vdb.xml",deploymentVDB);
+			
 			// output using VDBMetadataParser
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			VDBMetadataParser.marshell(vdb, out);
+			VDBMetadataParser.marshell(deploymentVDB, out);
 			
 			// Deployment name for vdb must end in '-vdb.xml'
 			String vdbDeployName = vdbName+"-vdb.xml";
@@ -754,5 +820,53 @@ TeiidMgrService {
 			addVDBSource(vdbName);
 		}
 	}
+	
+	private VDBMetaData removeValidationErrors(VDBMetaData vdb) {
+		// If no VDB errors, its safe to deploy
+		if(!vdb.hasErrors()) {
+			return vdb;
+		}
+		
+		// If it has errors, clone the models out errors
+		if(vdb.hasErrors()) {
+			// Get current models
+			List<Model> models = vdb.getModels();
+			
+			// New list for scrubbed models
+			List<ModelMetaData> scrubbedModels = new ArrayList<ModelMetaData>();
+			
+			// Go thru the current models
+			for(Model model: models) {
+				List<ModelMetaData.Message> validationErrors = ((ModelMetaData)model).getMessages(false);
+				if(validationErrors.isEmpty()) {
+					scrubbedModels.add((ModelMetaData)model);
+				} else {
+					ModelMetaData modelMeta = copyWithoutErrors((ModelMetaData)model);
+					scrubbedModels.add(modelMeta);
+				}
+			}
+			
+			// Reset the models on the VDB
+			vdb.setModels(scrubbedModels);
+		}
+		return vdb;
+	}
+	
+	private ModelMetaData copyWithoutErrors(ModelMetaData model) {
+		ModelMetaData resultModel = new ModelMetaData();
+		resultModel.setName(model.getName());
+		resultModel.setSourceMappings(model.getSourceMappings());
+		resultModel.setModelType(model.getModelType());
+		resultModel.setSchemaSourceType(model.getSchemaSourceType());
+		resultModel.setSchemaText(model.getSchemaText());
+		return resultModel;
+	}
+	
+    public boolean save(String filePath, VDBMetaData vdb) throws Exception {
+        File outFile = new File(filePath);
+        FileOutputStream outStream = new FileOutputStream(outFile);
+        VDBMetadataParser.marshell(vdb, outStream);
+        return true;
+    }
 	
 }
