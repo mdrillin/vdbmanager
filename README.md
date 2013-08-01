@@ -29,7 +29,9 @@ The pom.xml provided has dependencies to JBoss EAP 6.1 and Teiid 8.4.1 currently
 
 Once deployed you may access the application in your browser at:
 
-http://<host>/vdbmanager
+http://[host]/vdbmanager
 
-for example, http://localhost:8080/vdbmanager
+for example: 
+
+http://localhost:8080/vdbmanager
 
