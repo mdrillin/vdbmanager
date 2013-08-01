@@ -20,8 +20,8 @@ This will generate the .war file into the target directory, which you can then d
 
 ## Dependencies
 
-pom.xml provided has dependencies to JBoss EAP 6.1 and Teiid 8.4.1 currently.
+The pom.xml provided has dependencies to JBoss EAP 6.1 and Teiid 8.4.1 currently.
 
-EAP 6.1 - the maven repo for EAP 6.1 Final can be downloaded from http://www.jboss.org/products/eap.html and installed into your local maven repo
-Teiid   - the public maven repos for Teiid are located at https://repository.jboss.org/nexus/content/groups/public/org/jboss/teiid/
+ - EAP 6.1 - the maven repo for EAP 6.1 Final can be downloaded from http://www.jboss.org/products/eap.html and installed into your local maven repo
+ - Teiid   - the public maven repos for Teiid are located at https://repository.jboss.org/nexus/content/groups/public/org/jboss/teiid/
 
