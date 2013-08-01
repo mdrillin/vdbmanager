@@ -14,6 +14,7 @@ public class PropertyObj extends Object implements Serializable {
 	private boolean isModifiable = false;
 	private boolean isHidden = false;
 	private String value;
+	private String defaultValue;
 
 	public PropertyObj() {
 	}
@@ -56,6 +57,14 @@ public class PropertyObj extends Object implements Serializable {
 
 	public void setModifiable(boolean isModifiable) {
 		this.isModifiable = isModifiable;
+	}
+	
+	public String getDefault() {
+		return this.defaultValue;
+	}
+	
+	public void setDefault(String defaultValue) {
+		this.defaultValue = defaultValue;
 	}
 	
 	public boolean isHidden() {

@@ -354,15 +354,34 @@ public class CreateEditSourceDialog {
 		for(PropertyObj propertyObj: propertyObjs) {
 			String propName = propertyObj.getName();
 			String value = propertyObj.getValue();
-			// Property is Required - add it to the Map
-			if(propertyObj.isRequired()) {
-				resultMap.put(propName, value);
-			} else if(value!=null && !value.trim().isEmpty()) {
+			String defaultValue = propertyObj.getDefault();
+			// Property is included for the create if (1) it is required or (2) it is modifiable and value is different than the default
+			if(propertyObj.isRequired() || (propertyObj.isModifiable() && !valuesSame(value,defaultValue)) ) {
 				resultMap.put(propName, value);
 			}
 		}
 		return resultMap;
 	}
+	
+    private boolean valuesSame(String value1, String value2) {
+        if(isEmpty(value1) && isEmpty(value2)) {
+            return true;
+        }
+        if(isEmpty(value1) && !isEmpty(value2)) {
+            return false;
+        }
+        if(isEmpty(value2) && !isEmpty(value1)) {
+            return false;
+        }
+        if(!value1.equalsIgnoreCase(value2)) {
+            return false;
+        }
+        return true;
+    }
+    
+    public static boolean isEmpty( final String text ) {
+        return (text == null || text.length() == 0);
+    }
 	
 	/*
 	 * Populate the Properties table with defaults for the supplied dataSourceType.  The Property Definitions were

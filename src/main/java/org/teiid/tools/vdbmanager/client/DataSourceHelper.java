@@ -17,10 +17,10 @@ public class DataSourceHelper {
 	private static final String CONNECTION_FACTORY_SALESFORCE="org.teiid.resource.adapter.salesforce.SalesForceManagedConnectionFactory";
 	private static final String CONNECTION_FACTORY_LDAP="org.teiid.resource.adapter.ldap.LDAPManagedConnectionFactory";
 
-	public static final String FILE_RARFILE = "teiid-connector-file.rar"; //$NON-NLS-1$
-	public static final String WEBSERVICE_RARFILE = "teiid-connector-ws.rar"; //$NON-NLS-1$
-	public static final String SALESFORCE_RARFILE = "teiid-connector-salesforce.rar"; //$NON-NLS-1$
-	public static final String LDAP_RARFILE = "teiid-connector-ldap.rar"; //$NON-NLS-1$
+	public static final String FILE_RARFILE = "file"; //$NON-NLS-1$
+	public static final String WEBSERVICE_RARFILE = "webservice"; //$NON-NLS-1$
+	public static final String SALESFORCE_RARFILE = "salesforce"; //$NON-NLS-1$
+	public static final String LDAP_RARFILE = "ldap"; //$NON-NLS-1$
 
 	private static final String DDL_NAME = "Views-DDL";
 	private static final String DDL_DISPLAY_NAME = "View DDL";

@@ -40,7 +40,9 @@ TeiidMgrService {
 
 	private static final String DDL_KEY = "Views-DDL";
 	private static final String LOCALHOST = "localhost";
-
+	private static final String CLASSNAME_KEY = "class-name";
+    private static final String CONN_FACTORY_CLASS_KEY = "managedconnectionfactory-class"; 
+	
 	ConnectionFactory connectionFactory;
 	Admin admin = null;
 
@@ -63,8 +65,12 @@ TeiidMgrService {
 	public List<String> initApplication(int serverPort, String userName, String password) throws TeiidServiceException {
 		String serverHost = LOCALHOST;
 		
-		// First priority is use OpenShift - if running on OpenShift
-		String serverIP = System.getenv("OPENSHIFT_INTERNAL_IP");
+		// First priority is use OpenShift - if running on OpenShift.
+		// Try both the JBOSSEAP and JBOSSAS system vars
+		String serverIP = System.getenv("OPENSHIFT_JBOSSEAP_IP");
+		if(serverIP==null || serverIP.trim().isEmpty()) {
+			serverIP = System.getenv("OPENSHIFT_JBOSSAS_IP");
+		}
 		if(serverIP==null || serverIP.trim().isEmpty()) {
 			// Lookup the server ip address for the server this is running on.
 			try {
@@ -117,9 +123,7 @@ TeiidMgrService {
 		}
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
-			if(vdbMeta.isDynamic()) {
-				vdbNames.add(vdbMeta.getName());
-			}
+			vdbNames.add(vdbMeta.getName());
 		}
 
 		Collections.sort(vdbNames);
@@ -367,7 +371,7 @@ TeiidMgrService {
 		VDBMetaData workVDBMetaData = null;
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
-			if(vdbMeta.isDynamic() && vdbMeta.getName()!=null && vdbMeta.getName().equalsIgnoreCase(vdbName)) {
+			if(vdbMeta.getName()!=null && vdbMeta.getName().equalsIgnoreCase(vdbName)) {
 				workVDBMetaData = vdbMeta;
 			}
 		}
@@ -608,8 +612,10 @@ TeiidMgrService {
 			try {
 				propDefnList = this.admin.getTemplatePropertyDefinitions(templateName);
 			} catch (AdminException e) {
-				throw new TeiidServiceException(e.getMessage());
+				throw new TeiidServiceException("["+templateName+"] "+e.getMessage());
 			}
+			String managedConnFactoryClass = getManagedConnectionFactoryClassDefault(propDefnList);
+			
 			for(PropertyDefinition propDefn: propDefnList) {
 				PropertyObj pDefn = new PropertyObj();
                 // ------------------------
@@ -631,7 +637,14 @@ TeiidMgrService {
 				Object defaultValue = propDefn.getDefaultValue();
 				if(defaultValue!=null) {
 					pDefn.setValue(defaultValue.toString());
+					pDefn.setDefault(defaultValue.toString());
 				}
+				
+	            // Copy the 'managedconnectionfactory-class' default value into the 'class-name' default value
+	            if(name.equals(CLASSNAME_KEY)) {
+	            	pDefn.setValue(managedConnFactoryClass);
+	            	pDefn.setRequired(true);
+	            }
                 // ------------------------
 				// Add PropertyObj to List
                 // ------------------------
@@ -641,7 +654,23 @@ TeiidMgrService {
 		return propDefns;
 	}
 	
-	/*
+    /*
+     * Get the default value for the Managed ConnectionFactory class
+     * @param propDefns the collection of property definitions
+     * @return default value of the ManagedConnectionFactory, null if not found.
+     */
+    private String getManagedConnectionFactoryClassDefault (Collection<? extends PropertyDefinition> propDefns) {
+        String resultValue = null;
+        for(PropertyDefinition pDefn : propDefns) {
+            if(pDefn.getName().equalsIgnoreCase(CONN_FACTORY_CLASS_KEY)) {
+                resultValue=(String)pDefn.getDefaultValue();
+                break;
+            }
+        }
+        return resultValue;
+    }
+
+    /*
 	 * Create the specified VDB "teiid-local" source on the server.  If it already exists, delete it first.
 	 * @param vdbName the name of the VDB for the connection
 	 */
