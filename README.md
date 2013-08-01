@@ -25,3 +25,11 @@ The pom.xml provided has dependencies to JBoss EAP 6.1 and Teiid 8.4.1 currently
  - EAP 6.1 - the maven repo for EAP 6.1 Final can be downloaded from http://www.jboss.org/products/eap.html and installed into your local maven repo
  - Teiid   - the public maven repos for Teiid are located at https://repository.jboss.org/nexus/content/groups/public/org/jboss/teiid/
 
+## Access the application
+
+Once deployed you may access the application in your browser at:
+
+http://<host>/vdbmanager
+
+for example, http://localhost:8080/vdbmanager
+

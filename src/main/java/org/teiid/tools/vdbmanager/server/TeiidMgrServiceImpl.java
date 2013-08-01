@@ -121,9 +121,14 @@ TeiidMgrService {
 		} catch (AdminException e) {
 		    throw new TeiidServiceException(e.getMessage());
 		}
+		
+		// Dont show the Preview VDBs
 		for(VDB vdb : vdbs) {
 			VDBMetaData vdbMeta = (VDBMetaData)vdb;
-			vdbNames.add(vdbMeta.getName());
+			String vdbName = vdbMeta.getName();
+			if(vdbName!=null && !vdbName.startsWith("PREVIEW_")) {
+				vdbNames.add(vdbName);
+			}
 		}
 
 		Collections.sort(vdbNames);
