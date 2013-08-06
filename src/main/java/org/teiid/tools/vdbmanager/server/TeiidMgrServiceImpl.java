@@ -39,7 +39,7 @@ public class TeiidMgrServiceImpl extends RemoteServiceServlet implements
 TeiidMgrService {
 
 	private static final String DDL_KEY = "Views-DDL";
-	private static final String LOCALHOST = "localhost";
+	private static final String LOCALHOST = "127.0.0.1";
 	private static final String CLASSNAME_KEY = "class-name";
     private static final String CONN_FACTORY_CLASS_KEY = "managedconnectionfactory-class"; 
 	
@@ -71,18 +71,14 @@ TeiidMgrService {
 		if(serverIP==null || serverIP.trim().isEmpty()) {
 			serverIP = System.getenv("OPENSHIFT_JBOSSAS_IP");
 		}
+				
 		if(serverIP==null || serverIP.trim().isEmpty()) {
 			// Lookup the server ip address for the server this is running on.
-			try {
-				serverIP=InetAddress.getLocalHost().getHostAddress();
-			} catch (Exception e) {
-				// Nothing here
-			}
+			serverIP = System.getProperty("jboss.bind.address");
 		}
-				
-		
-		// If the server Address was found, override the default 'localhost'
-		if(serverIP!=null) {
+						
+		// If the server bind address is set, override the default 'localhost'
+		if(serverIP!=null && !serverIP.trim().isEmpty()) {
 			serverHost = serverIP;
 		}
 		// Init the Admin API

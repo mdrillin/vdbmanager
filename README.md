@@ -14,9 +14,10 @@ and talk our community of contributors and users.
 
 Clone this repo to your system, then build the application war 
 
-$mvn clean install
+$mvn clean install -s settings.xml
 
 This will generate the .war file into the target directory, which you can then drop into your JBoss deployments directory.
+Note : The settings.xml file is included, but you will need to modifiy it.  First, install the EAP 6.1 repo locally - then modify settings.xml to reference it - (see Dependencies section)
 
 ## Dependencies
 
