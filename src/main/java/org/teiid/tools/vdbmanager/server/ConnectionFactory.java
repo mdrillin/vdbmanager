@@ -97,7 +97,11 @@ public class ConnectionFactory {
 			throw new Exception(e.getMessage());
 		}
 		if(admin==null) {
-			throw new Exception("Unable to establish Admin API connection, please check credentials");
+			StringBuffer sb = new StringBuffer("Unable to establish Admin API connection.  Please check the supplied credentials: \n");
+			sb.append("\n [Host]: "+serverHost);
+			sb.append("\n [Port]: "+serverPort);
+			
+			throw new Exception(sb.toString());
 		}
 		return admin;
 	}

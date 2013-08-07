@@ -99,6 +99,9 @@ TeiidMgrService {
 	 * @param password the user password
 	 */
 	private void initAdminApi(String serverHost, int serverPort, String userName, String password) throws Exception {
+		if(this.admin!=null) {
+			this.admin.close();
+		}
 		this.admin = org.teiid.tools.vdbmanager.server.ConnectionFactory.getInstance().initAdminApi(serverHost,serverPort,userName,password);
 	}
 	
